@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0B0B0D">
+<title>Rice Master · คำนวณหุงข้าว</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Prompt:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0B0D; --bg-2:#0E0E12;
+    --surface:#15151A; --surface-2:#1C1C22; --surface-3:#232329;
+    --line:rgba(201,168,106,.16);
+    --line-soft:rgba(255,255,255,.065);
+    --gold:#C9A86A; --gold-2:#E6CB8B; --gold-deep:#8C6E3A;
+    --text:#F4F1EA; --muted:#9C968C; --dim:#6B6760;
+    --ok:#7FB386;
+    --r:20px; --r-sm:14px;
+    --grad-gold:linear-gradient(135deg,#EBD49A 0%,#C9A86A 46%,#9C7C44 100%);
+    --grad-gold-soft:linear-gradient(135deg,rgba(230,203,139,.18),rgba(156,124,68,.10));
+    --shadow:0 20px 50px -24px rgba(0,0,0,.85),0 2px 0 rgba(255,255,255,.03) inset;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:'Prompt',sans-serif;
+    background:var(--bg); color:var(--text);
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    overflow-x:hidden; position:relative; min-height:100dvh;
+    line-height:1.5; font-weight:300;
+  }
+  /* ===== ambient background ===== */
+  .bg-layer{position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden}
+  .bg-glow{
+    position:absolute; top:-22%; left:50%; transform:translateX(-50%);
+    width:120%; height:60%;
+    background:radial-gradient(ellipse at center,rgba(201,168,106,.16),rgba(201,168,106,.05) 38%,transparent 66%);
+    filter:blur(8px);
+  }
+  .bg-glow.b{top:auto; bottom:-26%; height:55%; opacity:.6;
+    background:radial-gradient(ellipse at center,rgba(201,168,106,.14),transparent 64%);}
+  .bg-grain{position:absolute; inset:0; opacity:.05; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+  .bg-wave{position:absolute; left:0; right:0; bottom:0; width:100%; height:34vh; opacity:.55}
+
+  /* ===== layout ===== */
+  .app{position:relative; z-index:1; max-width:468px; margin:0 auto; padding:26px 18px 40px;}
+
+  /* ===== header ===== */
+  header{display:flex; align-items:center; gap:13px; margin-bottom:24px;}
+  .logo{
+    width:54px; height:54px; border-radius:15px; flex:none; position:relative;
+    background:linear-gradient(160deg,#1a1a1f,#0c0c0f);
+    border:1px solid var(--line);
+    display:grid; place-items:center;
+    box-shadow:0 8px 22px -10px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.02) inset;
+  }
+  .logo svg{width:30px; height:30px}
+  .logo::after{content:""; position:absolute; inset:0; border-radius:15px;
+    background:linear-gradient(135deg,rgba(230,203,139,.25),transparent 55%); pointer-events:none}
+  .brand h1{font-family:'Cormorant Garamond',serif; font-weight:600; font-size:27px;
+    letter-spacing:.5px; line-height:1; background:var(--grad-gold);
+    -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .brand p{font-size:11px; color:var(--muted); letter-spacing:3px; text-transform:uppercase; margin-top:5px; font-weight:300}
+  .gear{margin-left:auto; width:42px; height:42px; border-radius:12px; flex:none;
+    background:var(--surface); border:1px solid var(--line-soft); color:var(--gold);
+    display:grid; place-items:center; cursor:pointer; transition:.18s;}
+  .gear:active{transform:scale(.92)} .gear:hover{border-color:var(--line)}
+  .gear svg{width:19px;height:19px}
+
+  /* ===== card ===== */
+  .card{background:var(--surface); border:1px solid var(--line-soft); border-radius:var(--r);
+    padding:20px; margin-bottom:15px; box-shadow:var(--shadow); position:relative;}
+  .card-h{display:flex; align-items:center; gap:8px; margin-bottom:16px;}
+  .card-h .k{font-size:13px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:400}
+  .card-h .num{font-family:'Cormorant Garamond',serif; font-size:15px; color:var(--gold);
+    width:24px;height:24px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;font-weight:600}
+
+  /* ===== hero result ===== */
+  .hero{background:linear-gradient(165deg,#181820,#101015);
+    border:1px solid var(--line); overflow:hidden;}
+  .hero::before{content:""; position:absolute; top:0; left:18px; right:18px; height:2px;
+    background:var(--grad-gold); border-radius:2px; box-shadow:0 0 14px rgba(201,168,106,.55)}
+  .hero .lab{font-size:12px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); font-weight:300}
+  .hero .ratio{margin-left:auto; font-size:11px; color:var(--gold); border:1px solid var(--line);
+    padding:4px 10px; border-radius:40px; letter-spacing:1px; background:var(--grad-gold-soft)}
+  .hero .big{font-family:'Cormorant Garamond',serif; font-weight:600; font-size:74px; line-height:.95;
+    background:var(--grad-gold); -webkit-background-clip:text; background-clip:text; color:transparent;
+    letter-spacing:1px; margin-top:6px; font-variant-numeric:tabular-nums;}
+  .hero .big .u{font-size:26px; font-weight:500; letter-spacing:1px; margin-left:6px}
+  .hero .sub{color:var(--muted); font-size:13.5px; margin-top:8px; font-weight:300}
+  .hero .sub b{color:var(--text); font-weight:500}
+
+  /* ===== stepper / rows ===== */
+  .row{display:flex; align-items:center; justify-content:space-between; padding:13px 0; border-top:1px solid var(--line-soft)}
+  .row:first-of-type{border-top:none; padding-top:2px}
+  .row .lbl{font-size:14.5px; color:var(--text); font-weight:300}
+  .row .lbl small{display:block; color:var(--dim); font-size:11.5px; margin-top:2px}
+  .stepper{display:flex; align-items:center; gap:4px; background:var(--surface-2); border-radius:40px; padding:4px; border:1px solid var(--line-soft)}
+  .stepper button{width:34px;height:34px;border-radius:50%;border:none;background:transparent;color:var(--gold);
+    font-size:22px; cursor:pointer; display:grid; place-items:center; transition:.15s; line-height:1}
+  .stepper button:active{transform:scale(.85)} .stepper button:hover{background:var(--surface-3)}
+  .stepper .v{min-width:58px; text-align:center; font-size:16px; font-weight:500; color:var(--text)}
+  .stepper .v small{color:var(--muted); font-weight:300; font-size:12px}
+
+  /* segmented */
+  .seg{display:flex; background:var(--surface-2); border-radius:40px; padding:4px; border:1px solid var(--line-soft); gap:2px}
+  .seg button{flex:1; border:none; background:transparent; color:var(--muted); font-family:inherit;
+    font-size:13px; padding:8px 4px; border-radius:40px; cursor:pointer; transition:.2s; font-weight:300; white-space:nowrap}
+  .seg button.on{background:var(--grad-gold); color:#1a1404; font-weight:500; box-shadow:0 4px 12px -4px rgba(201,168,106,.5)}
+  .seg button:active{transform:scale(.96)}
+  .seg.full{margin-top:4px}
+
+  /* rice chips */
+  .chips{display:flex; flex-wrap:wrap; gap:8px}
+  .chip{border:1px solid var(--line-soft); background:var(--surface-2); color:var(--muted);
+    padding:9px 14px; border-radius:40px; font-size:13.5px; cursor:pointer; transition:.18s; font-weight:300;
+    display:flex; align-items:center; gap:6px}
+  .chip:active{transform:scale(.95)}
+  .chip:hover{border-color:var(--line)}
+  .chip.on{background:var(--grad-gold-soft); border-color:var(--gold); color:var(--text)}
+  .chip.on .dot{background:var(--gold)}
+  .chip .ic{font-size:15px; filter:grayscale(.2)}
+  .chip .ck{width:15px;height:15px;display:none}
+  .chip.on .ck{display:block}
+
+  /* flavor details */
+  .fd{margin-top:14px; display:flex; flex-direction:column; gap:9px}
+  .fd-item{background:var(--surface-2); border:1px solid var(--line-soft); border-left:2px solid var(--gold);
+    border-radius:10px; padding:11px 13px;}
+  .fd-item .t{display:flex; align-items:center; gap:8px; font-size:14px; font-weight:500; color:var(--text)}
+  .fd-item .t .amt{margin-left:auto; font-size:12.5px; color:var(--gold); font-weight:400; text-align:right; max-width:55%}
+  .fd-item .e{font-size:12.5px; color:var(--muted); margin-top:5px; font-weight:300; line-height:1.45}
+  .fd-item .src{font-size:10.5px; color:var(--dim); margin-top:4px; letter-spacing:.5px}
+  .fd-empty{color:var(--dim); font-size:13px; text-align:center; padding:8px; font-weight:300; font-style:italic}
+
+  /* timing */
+  .time-top{display:flex; gap:10px; align-items:stretch; margin-bottom:6px}
+  .time-in{flex:1; background:var(--surface-2); border:1px solid var(--line-soft); border-radius:var(--r-sm); padding:11px 14px}
+  .time-in label{font-size:11px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; display:block; margin-bottom:3px; font-weight:300}
+  .time-in input{background:transparent; border:none; color:var(--text); font-family:'Cormorant Garamond',serif;
+    font-size:30px; font-weight:600; width:100%; outline:none; letter-spacing:1px}
+  .time-in input::-webkit-calendar-picker-indicator{filter:invert(.7) sepia(1) saturate(3) hue-rotate(5deg); opacity:.6; cursor:pointer}
+  .btn-now{background:var(--grad-gold); border:none; color:#1a1404; font-family:inherit; font-weight:600;
+    border-radius:var(--r-sm); padding:0 18px; cursor:pointer; font-size:13.5px; transition:.18s; white-space:nowrap;
+    box-shadow:0 8px 20px -8px rgba(201,168,106,.55); display:flex; align-items:center; gap:6px}
+  .btn-now:active{transform:scale(.95)}
+  .btn-now svg{width:15px;height:15px}
+
+  .soak-row{display:flex; align-items:center; justify-content:space-between; padding:13px 0 4px; margin-top:6px; border-top:1px solid var(--line-soft)}
+  .switch{width:48px;height:28px;border-radius:40px;background:var(--surface-3);border:1px solid var(--line-soft);position:relative;cursor:pointer;transition:.25s;flex:none}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#7a766e;transition:.25s}
+  .switch.on{background:var(--grad-gold);border-color:transparent}
+  .switch.on::after{left:24px;background:#1a1404}
+
+  /* timeline */
+  .tl{margin-top:16px; position:relative; padding-left:26px}
+  .tl::before{content:"";position:absolute;left:8px;top:8px;bottom:30px;width:1.5px;background:linear-gradient(var(--gold),var(--line))}
+  .tl-step{position:relative; padding-bottom:15px}
+  .tl-step::before{content:"";position:absolute;left:-22.5px;top:4px;width:11px;height:11px;border-radius:50%;background:var(--bg);border:2px solid var(--gold)}
+  .tl-step .a{font-size:14px;font-weight:400;color:var(--text)}
+  .tl-step .a span{color:var(--gold); font-size:13px; font-weight:300}
+  .tl-step .b{font-size:12px;color:var(--muted);margin-top:2px;font-family:'Cormorant Garamond',serif;font-size:14px;letter-spacing:.5px}
+  .tl-done{position:relative; background:var(--grad-gold-soft); border:1px solid var(--gold);
+    border-radius:var(--r-sm); padding:12px 14px; margin-top:4px; margin-left:-26px}
+  .tl-done .a{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500;color:var(--text)}
+  .tl-done .a .clk{margin-left:auto;font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--gold)}
+  .tl-done .tot{font-size:11.5px;color:var(--muted);margin-top:3px}
+  .countdown{margin-top:12px; text-align:center; background:var(--surface-2); border:1px dashed var(--line);
+    border-radius:var(--r-sm); padding:12px; display:none}
+  .countdown.on{display:block}
+  .countdown .c{font-family:'Cormorant Garamond',serif; font-size:34px; font-weight:600; color:var(--gold); letter-spacing:2px; font-variant-numeric:tabular-nums}
+  .countdown .l{font-size:11px; color:var(--muted); letter-spacing:2px; text-transform:uppercase}
+
+  /* summary */
+  .sum-box{background:var(--bg-2); border:1px solid var(--line-soft); border-radius:var(--r-sm);
+    padding:15px; font-size:13px; color:var(--text); white-space:pre-wrap; line-height:1.85; font-weight:300;
+    font-family:'Prompt',monospace;}
+  .sum-box .hl{color:var(--gold)}
+  .btn-copy{width:100%; margin-top:12px; background:var(--surface-2); border:1px solid var(--line); color:var(--gold);
+    font-family:inherit; font-weight:400; padding:13px; border-radius:var(--r-sm); cursor:pointer; font-size:14px;
+    transition:.18s; display:flex; align-items:center; justify-content:center; gap:8px; letter-spacing:.5px}
+  .btn-copy:active{transform:scale(.98)} .btn-copy:hover{background:var(--surface-3)}
+  .btn-copy svg{width:16px;height:16px}
+
+  /* tips accordion */
+  .acc{border-top:1px solid var(--line-soft)}
+  .acc-item{border-bottom:1px solid var(--line-soft)}
+  .acc-q{display:flex; align-items:center; gap:10px; padding:14px 2px; cursor:pointer; font-size:14.5px; font-weight:400; color:var(--text)}
+  .acc-q .src{margin-left:auto; font-size:10px; color:var(--gold-deep); border:1px solid var(--line); padding:2px 7px; border-radius:20px; letter-spacing:.5px; font-weight:300}
+  .acc-q .ar{width:16px;height:16px;color:var(--gold);transition:.25s;flex:none}
+  .acc-item.open .ar{transform:rotate(180deg)}
+  .acc-a{max-height:0; overflow:hidden; transition:max-height .3s ease}
+  .acc-a ul{padding:0 2px 14px 18px; margin:0}
+  .acc-a li{font-size:13px; color:var(--muted); font-weight:300; margin-bottom:7px; line-height:1.5}
+  .acc-a li::marker{color:var(--gold)}
+
+  /* feature badges */
+  .feats{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:22px 4px 14px; text-align:center}
+  .feat .ic{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);margin:0 auto 7px;display:grid;place-items:center;color:var(--gold);background:var(--grad-gold-soft)}
+  .feat .ic svg{width:17px;height:17px}
+  .feat .t{font-size:11px;color:var(--text);letter-spacing:1px;text-transform:uppercase;font-weight:400}
+  .feat .s{font-size:10px;color:var(--dim);margin-top:1px;font-weight:300}
+
+  footer{text-align:center; color:var(--dim); font-size:11px; margin-top:10px; letter-spacing:.5px; font-weight:300}
+  footer b{color:var(--gold-deep)}
+
+  /* modal */
+  .ov{position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.62); backdrop-filter:blur(6px);
+    opacity:0; pointer-events:none; transition:.25s; display:flex; align-items:flex-end; justify-content:center}
+  .ov.on{opacity:1; pointer-events:auto}
+  .sheet{width:100%; max-width:468px; background:var(--surface); border:1px solid var(--line);
+    border-radius:24px 24px 0 0; padding:22px 20px calc(22px + env(safe-area-inset-bottom)); transform:translateY(100%); transition:.3s cubic-bezier(.2,.8,.2,1)}
+  .ov.on .sheet{transform:translateY(0)}
+  .sheet .grab{width:38px;height:4px;border-radius:4px;background:var(--surface-3);margin:0 auto 16px}
+  .sheet h3{font-family:'Cormorant Garamond',serif; font-size:22px; color:var(--gold); font-weight:600; margin-bottom:4px}
+  .sheet p{font-size:12.5px; color:var(--muted); margin-bottom:16px; font-weight:300}
+  .cup-in{display:flex; align-items:center; gap:10px; background:var(--surface-2); border:1px solid var(--line-soft);
+    border-radius:var(--r-sm); padding:6px 6px 6px 16px; margin-bottom:14px}
+  .cup-in input{flex:1; background:transparent; border:none; color:var(--text); font-size:24px; font-weight:500;
+    outline:none; font-family:'Cormorant Garamond',serif; width:100%}
+  .cup-in .unit{color:var(--muted); font-size:14px; padding-right:8px}
+  .presets{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px}
+  .presets button{flex:1; min-width:62px; background:var(--surface-2); border:1px solid var(--line-soft); color:var(--muted);
+    border-radius:40px; padding:9px; font-family:inherit; font-size:13px; cursor:pointer; transition:.15s; font-weight:300}
+  .presets button.on{background:var(--grad-gold-soft); border-color:var(--gold); color:var(--text)}
+  .presets button:active{transform:scale(.95)}
+  .sheet-done{width:100%; background:var(--grad-gold); border:none; color:#1a1404; font-family:inherit; font-weight:600;
+    padding:14px; border-radius:var(--r-sm); cursor:pointer; font-size:15px; letter-spacing:.5px}
+  .sheet-done:active{transform:scale(.98)}
+
+  /* toast */
+  .toast{position:fixed; top:24px; left:50%; transform:translateX(-50%) translateY(-80px); z-index:80;
+    background:var(--surface-3); border:1px solid var(--gold); color:var(--text); padding:11px 20px; border-radius:40px;
+    font-size:13.5px; box-shadow:var(--shadow); opacity:0; transition:.35s cubic-bezier(.2,.8,.2,1); display:flex; align-items:center; gap:8px}
+  .toast.on{transform:translateX(-50%) translateY(0); opacity:1}
+  .toast svg{width:16px;height:16px;color:var(--gold)}
+
+  /* reveal */
+  .reveal{opacity:0; animation:fadeUp .65s cubic-bezier(.2,.7,.2,1) forwards; animation-delay:var(--d,0s)}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  @media (prefers-reduced-motion:reduce){.reveal{animation:none;opacity:1}}
+</style>
+</head>
+<body>
+  <div class="bg-layer">
+    <div class="bg-glow"></div>
+    <div class="bg-glow b"></div>
+    <div class="bg-grain"></div>
+    <svg class="bg-wave" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="none">
+      <defs>
+        <linearGradient id="wg" x1="0" y1="0" x2="1440" y2="0">
+          <stop offset="0" stop-color="#8C6E3A" stop-opacity="0"/>
+          <stop offset=".5" stop-color="#E6CB8B"/>
+          <stop offset="1" stop-color="#8C6E3A" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path d="M0,240 C320,180 520,300 760,250 C1020,196 1180,300 1440,230" stroke="url(#wg)" stroke-width="2" opacity=".7"/>
+      <path d="M0,290 C300,250 560,330 820,288 C1080,250 1240,320 1440,278" stroke="url(#wg)" stroke-width="1.4" opacity=".4"/>
+    </svg>
+  </div>
+
+  <div class="app">
+    <!-- HEADER -->
+    <header class="reveal" style="--d:.02s">
+      <div class="logo">
+        <svg viewBox="0 0 32 32" fill="none">
+          <defs><linearGradient id="lg" x1="0" y1="0" x2="32" y2="32">
+            <stop offset="0" stop-color="#EBD49A"/><stop offset="1" stop-color="#9C7C44"/></linearGradient></defs>
+          <path d="M5 16h22a0 0 0 0 1 0 0 11 11 0 0 1-11 11A11 11 0 0 1 5 16Z" stroke="url(#lg)" stroke-width="1.6"/>
+          <path d="M9 16c1.5-3 4.5-4.5 7-4.5s5.5 1.5 7 4.5" stroke="url(#lg)" stroke-width="1.3" stroke-linecap="round" opacity=".85"/>
+          <path d="M14 8c0 1.5.8 2.5 2 3 1.2-.8 1.6-2 1.4-3.4M18.6 8.4c-.3 1.4.2 2.6 1.2 3.2" stroke="url(#lg)" stroke-width="1.2" stroke-linecap="round" opacity=".7"/>
+        </svg>
+      </div>
+      <div class="brand">
+        <h1>Rice Master</h1>
+        <p>หอม · นุ่ม · แม่นยำ</p>
+      </div>
+      <button class="gear" id="gear" aria-label="ตั้งค่า">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      </button>
+    </header>
+
+    <!-- HERO RESULT -->
+    <div class="card hero reveal" style="--d:.08s">
+      <div style="display:flex;align-items:center">
+        <span class="lab">น้ำที่ต้องใช้</span>
+        <span class="ratio" id="ratio">อัตรา 1 : 1.25</span>
+      </div>
+      <div class="big"><span id="water">900</span><span class="u">ml</span></div>
+      <div class="sub" id="waterSub">≈ <b>5 ถ้วยตวง</b> · ข้าว 720 ml</div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="card reveal" style="--d:.14s">
+      <div class="card-h"><span class="num">1</span><span class="k">ปริมาณ & ชนิดข้าว</span></div>
+      <div class="row">
+        <div class="lbl">จำนวนข้าว<small>ตวงด้วยถ้วยประจำบ้าน</small></div>
+        <div class="stepper">
+          <button id="dec">−</button>
+          <div class="v"><span id="cupsV">4</span> <small>ถ้วย</small></div>
+          <button id="inc">+</button>
+        </div>
+      </div>
+      <div class="row" style="display:block">
+        <div class="lbl" style="margin-bottom:10px">ชนิดข้าว</div>
+        <div class="chips" id="riceChips"></div>
+      </div>
+      <div class="row" style="display:block">
+        <div class="lbl" style="margin-bottom:8px">ระดับความนุ่ม</div>
+        <div class="seg" id="softSeg"></div>
+      </div>
+    </div>
+
+    <!-- FLAVORS -->
+    <div class="card reveal" style="--d:.2s">
+      <div class="card-h"><span class="num">2</span><span class="k">เพิ่มกลิ่น & รส</span></div>
+      <div class="chips" id="flavorChips"></div>
+      <div class="fd" id="flavorDetails"></div>
+    </div>
+
+    <!-- TIMING -->
+    <div class="card reveal" style="--d:.26s">
+      <div class="card-h"><span class="num">3</span><span class="k">เวลาหุง</span></div>
+      <div class="time-top">
+        <div class="time-in">
+          <label>เริ่มหุง</label>
+          <input type="time" id="startTime">
+        </div>
+        <button class="btn-now" id="nowBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>
+          เริ่มตอนนี้
+        </button>
+      </div>
+      <div class="soak-row">
+        <div class="lbl">แช่ข้าวก่อนหุง <small>20 นาที — ข้าวนุ่ม สุกสม่ำเสมอ</small></div>
+        <div class="switch on" id="soakSw"></div>
+      </div>
+      <div class="tl" id="timeline"></div>
+      <div class="countdown" id="countdown">
+        <div class="c" id="cdC">--:--</div>
+        <div class="l">เหลือเวลาถึงข้าวสุก</div>
+      </div>
+    </div>
+
+    <!-- SUMMARY -->
+    <div class="card reveal" style="--d:.32s">
+      <div class="card-h"><span class="num">4</span><span class="k">สรุปสูตร</span></div>
+      <div class="sum-box" id="sumBox"></div>
+      <button class="btn-copy" id="copyBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        คัดลอกสูตร
+      </button>
+    </div>
+
+    <!-- TIPS -->
+    <div class="card reveal" style="--d:.38s">
+      <div class="card-h"><span class="num">5</span><span class="k">เทคนิคหุงข้าวอร่อย</span></div>
+      <div class="acc" id="acc"></div>
+    </div>
+
+    <!-- FEATURES -->
+    <div class="feats reveal" style="--d:.44s">
+      <div class="feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2C7 7 7 12 12 22 17 12 17 7 12 2Z"/></svg></div><div class="t">หอม</div><div class="s">ใบเตย/ชา</div></div>
+      <div class="feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3C8 9 6 12 6 15a6 6 0 0 0 12 0c0-3-2-6-6-12Z"/></svg></div><div class="t">นุ่ม</div><div class="s">น้ำพอดี</div></div>
+      <div class="feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="t">แม่นยำ</div><div class="s">คำนวณให้</div></div>
+      <div class="feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5L8.6 10.5"/></svg></div><div class="t">ส่งต่อได้</div><div class="s">คัดลอกเลย</div></div>
+    </div>
+
+    <footer>รันบน <b>GitHub Pages</b> · 1 ถ้วยตวง = <span id="footCup">180</span> ml · ทำด้วย ❤</footer>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div class="ov" id="ov">
+    <div class="sheet">
+      <div class="grab"></div>
+      <h3>ขนาดถ้วยตวง</h3>
+      <p>ถ้วยตวงแต่ละบ้านไม่เท่ากัน — ตั้งค่าให้ตรงกับถ้วยที่ใช้จริง ระบบจะคำนวณน้ำใหม่ให้อัตโนมัติ</p>
+      <div class="cup-in">
+        <input type="number" id="cupInput" min="50" max="400" step="5" value="180">
+        <span class="unit">ml</span>
+      </div>
+      <div class="presets" id="presets"></div>
+      <button class="sheet-done" id="sheetDone">เสร็จ</button>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span id="toastMsg">คัดลอกแล้ว</span>
+  </div>
+
+<script>
+/* ===================== DATA ===================== */
+const RICE = {
+  jasmine:  {name:'ข้าวหอมมะลิ', ic:'🌾', mult:{loose:1.1, normal:1.25, soft:1.4, vsoft:1.5}},
+  saohai:   {name:'ข้าวเสาไห้',  ic:'🍚', mult:{loose:1.4, normal:1.5, soft:1.6, vsoft:1.7}},
+  brown:    {name:'ข้าวกล้อง/ไรซ์เบอร์รี่', ic:'🟤', mult:{loose:1.8, normal:2.0, soft:2.2, vsoft:2.4}},
+  japanese: {name:'ข้าวญี่ปุ่น', ic:'🍙', mult:{loose:1.15, normal:1.2, soft:1.3, vsoft:1.4}},
+};
+const SOFT = [
+  {id:'loose', label:'ร่วน'},
+  {id:'normal',label:'ปกติ'},
+  {id:'soft',  label:'นุ่ม'},
+  {id:'vsoft', label:'นุ่มมาก'},
+];
+const FLAVORS = [
+  {id:'salt', ic:'🧂', name:'เกลือ',
+    amount:(c)=>`${tsp(c/16)} ช้อนชา`,
+    effect:'ดึงรสข้าวให้กลมกล่อม ข้าวเรียงตัวสวยขึ้นหม้อ (ไม่ทำให้เค็ม)', src:'aroifin'},
+  {id:'pandan', ic:'🌿', name:'ใบเตย',
+    amount:(c)=>`${Math.max(1,Math.round(c/3))} ใบ (ขมวดปม)`,
+    effect:'หอมใบเตยคลาสสิก ใส่ลงหม้อตอนหุงได้เลย', src:'aroifin'},
+  {id:'acid', ic:'🍋', name:'น้ำมะนาว / น้ำส้มสายชู',
+    amount:(c)=> c<=4 ? '3–4 หยด' : `${Math.round(c)}–${Math.round(c)+1} หยด`,
+    effect:'ข้าวเม็ดสวย นุ่มฟู ขาวขึ้น และบูดยากในอากาศร้อน', src:'aroifin + sanook'},
+  {id:'oil', ic:'🫒', name:'น้ำมันพืช / เนย',
+    amount:(c)=> c<=4 ? '½ ช้อนชา' : `${tsp(c/8)} ช้อนชา`,
+    effect:'ข้าวร่วน ไม่ติดกัน เคี้ยวมัน (ข้าวเก่า/แข็ง ใส่ได้ถึง 1 ช้อนโต๊ะ)', src:'aroifin'},
+  {id:'coconut', ic:'🥥', name:'น้ำมะพร้าว',
+    amount:(c,w)=>`${Math.round(w*0.2/10)*10} ml (แทนน้ำส่วนหนึ่ง)`,
+    effect:'ข้าวหอมหวานนิด ๆ มัน เหมาะกับเมนูหวาน', src:'แนะนำเพิ่ม'},
+  {id:'hot', ic:'🔥', name:'หุงด้วยน้ำร้อน',
+    amount:()=>'ใช้น้ำเดือดแทนน้ำเย็น',
+    effect:'รักษาวิตามิน B1 ข้าวสุกทั่ว หอม เคี้ยวหนึบขึ้น', src:'sanook'},
+  {id:'tea', ic:'🍵', name:'น้ำชา',
+    amount:(c,w)=>`ใบชา ${(w/1000*0.5).toFixed(1)} g + น้ำเดือด ${w} ml · แช่ 5–10 นาที กรอง`,
+    effect:'ข้าวสีเหลืองอ่อนสวย หอม ช่วยย่อย ลดท้องอืด', src:'sanook'},
+  {id:'egg', ic:'🥚', name:'ผงเปลือกไข่',
+    amount:()=>'โรยเล็กน้อย (ย่างกรอบ + บดละเอียด)',
+    effect:'เสริมแคลเซียมธรรมชาติ ดีต่อกระดูกและฟัน', src:'sanook'},
+];
+const TIPS = [
+  {q:'ล้างข้าว & เตรียมก่อนหุง', src:'aroifin', items:[
+    'ซาวข้าวเบา ๆ 2 รอบ พอให้น้ำใส อย่าขยี้แรง ความหอมจะหายไปกับน้ำ',
+    'แช่ข้าวก่อนกดสวิตช์ — หอมมะลิ ~20 นาที / ข้าวญี่ปุ่น 30 นาที (เม็ดจะขาวขุ่น)',
+    'เช็ดก้นหม้อให้แห้งก่อนวางลงหม้อหุง กันไฟฟ้าลัด/หม้อเสีย',
+  ]},
+  {q:'อัตราส่วนน้ำต่อข้าว', src:'aroifin', items:[
+    'หอมมะลิ ข้าว 1 : น้ำ 1.2–1.25 (หรือจุ่มนิ้วชี้ เติมน้ำให้ถึงข้อแรก)',
+    'เสาไห้ 1 : 1.5 · ข้าวกล้อง/ไรซ์เบอร์รี่ 1 : 2 · ข้าวญี่ปุ่น 1 : 1.2',
+    'ชอบร่วน/แข็งลดน้ำลง ชอบนุ่มเพิ่มน้ำขึ้นทีละนิด',
+  ]},
+  {q:'4 สูตรลับให้ข้าวหอม นุ่ม ไม่บูด', src:'sanook', items:[
+    'หุงด้วยน้ำร้อน/เดือด → รักษาวิตามิน B1 ข้าวหอม เคี้ยวหนึบ',
+    'หุงด้วยน้ำชา (ใบชา 0.5 g ต่อน้ำ 1 ลิตร แช่ 5–10 นาที กรอง) → หอม ช่วยย่อย',
+    'น้ำส้มสายชูนิดเดียว (~2–3 ml ต่อข้าว 1.5 กก.) → ข้าวขาว ไม่บูดง่ายหน้าร้อน',
+    'ผงเปลือกไข่ย่างบดละเอียด โรยลงหม้อ → เสริมแคลเซียม',
+  ]},
+  {q:'ของยอดนิยมที่คนนิยมใส่', src:'pantip', items:[
+    'เกลือปลายหยิบมือ · น้ำมัน/เนยเล็กน้อย · ใบเตย · น้ำมะนาว — ตัวช่วยยอดฮิตในคอมมูนิตี้',
+    'ใส่ทีละน้อยก่อนเสมอ แล้วค่อยปรับรอบหน้าให้ถูกปาก',
+  ]},
+  {q:'หลังกดหุง — ขั้นตอนที่คนมักพลาด', src:'aroifin', items:[
+    'ห้ามเปิดฝาระหว่างหุง ความดัน/ไอน้ำสำคัญมาก',
+    'พอสวิตช์ดีดขึ้น Warm ทิ้งให้ระอุต่อ 10–15 นาที ค่อยเปิด → ข้าวหอมกรุ่น นัวนุ่ม',
+    'เปิดแล้วใช้พายคุ้ยข้าวเบา ๆ ให้ไอน้ำระเหย ข้าวจะไม่แฉะติดกัน',
+  ]},
+];
+
+/* ===================== STATE ===================== */
+const state = {
+  cups:4, cupSize:180, rice:'jasmine', soft:'normal',
+  flavors:new Set(['salt']), startTime:'06:30', soak:true,
+};
+let lastWater = 0, cdTimer = null, cdTarget = null;
+
+/* ===================== HELPERS ===================== */
+const $ = s => document.querySelector(s);
+function tsp(v){
+  const whole=Math.floor(v); const r=v-whole;
+  const fr=[[0,''],[.125,'⅛'],[.25,'¼'],[.333,'⅓'],[.5,'½'],[.667,'⅔'],[.75,'¾'],[1,'•1']];
+  let best=fr[0],bd=9; for(const f of fr){const d=Math.abs(r-f[0]); if(d<bd){bd=d;best=f;}}
+  let w=whole, fp=best[1]; if(best[1]==='•1'){w+=1;fp='';}
+  if(w===0&&fp==='') return '⅛';
+  if(w===0) return fp;
+  return fp?`${w}${fp}`:`${w}`;
+}
+function cupFrac(v){
+  const whole=Math.floor(v); const r=v-whole;
+  const fr=[[0,''],[.25,'¼'],[.5,'½'],[.75,'¾'],[1,'•1']];
+  let best=fr[0],bd=9; for(const f of fr){const d=Math.abs(r-f[0]); if(d<bd){bd=d;best=f;}}
+  let w=whole, fp=best[1]; if(best[1]==='•1'){w+=1;fp='';}
+  if(w===0&&fp==='') return '0';
+  if(w===0) return fp;
+  return fp?`${w}${fp}`:`${w}`;
+}
+function calc(){
+  const mult=RICE[state.rice].mult[state.soft];
+  const riceMl=state.cups*state.cupSize;
+  const water=Math.round(riceMl*mult/10)*10;
+  return {mult, riceMl, water, waterCups:water/state.cupSize};
+}
+function parseT(s){const [h,m]=s.split(':').map(Number); return h*60+m;}
+function fmtT(min){min=((Math.round(min)%1440)+1440)%1440; const h=Math.floor(min/60),m=min%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;}
+function cookMin(){return Math.round(18+4*state.cups);}
+function animateNum(el,from,to){
+  if(from===to||isNaN(from)){el.textContent=to.toLocaleString();return;}
+  const dur=420,t0=performance.now();
+  function step(t){const p=Math.min(1,(t-t0)/dur);const e=1-Math.pow(1-p,3);
+    el.textContent=(Math.round((from+(to-from)*e)/10)*10).toLocaleString();
+    if(p<1)requestAnimationFrame(step); else el.textContent=to.toLocaleString();}
+  requestAnimationFrame(step);
+}
+
+/* ===================== RENDER (static lists) ===================== */
+function buildRiceChips(){
+  $('#riceChips').innerHTML = Object.entries(RICE).map(([k,v])=>
+    `<div class="chip ${k===state.rice?'on':''}" data-rice="${k}">
+       <span class="ic">${v.ic}</span>${v.name}
+     </div>`).join('');
+}
+function buildSoft(){
+  $('#softSeg').innerHTML = SOFT.map(s=>
+    `<button data-soft="${s.id}" class="${s.id===state.soft?'on':''}">${s.label}</button>`).join('');
+}
+function buildFlavorChips(){
+  $('#flavorChips').innerHTML = FLAVORS.map(f=>
+    `<div class="chip ${state.flavors.has(f.id)?'on':''}" data-fl="${f.id}">
+       <svg class="ck" viewBox="0 0 24 24" fill="none" stroke="#C9A86A" stroke-width="2.4"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+       <span class="ic">${f.ic}</span>${f.name}
+     </div>`).join('');
+}
+function buildTips(){
+  $('#acc').innerHTML = TIPS.map((t,i)=>
+    `<div class="acc-item ${i===0?'open':''}">
+       <div class="acc-q" data-acc="${i}">
+         ${t.q}<span class="src">${t.src}</span>
+         <svg class="ar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" stroke-linecap="round"/></svg>
+       </div>
+       <div class="acc-a"><ul>${t.items.map(x=>`<li>${x}</li>`).join('')}</ul></div>
+     </div>`).join('');
+  // open first
+  requestAnimationFrame(()=>{const a=document.querySelector('.acc-item.open .acc-a'); if(a)a.style.maxHeight=a.scrollHeight+'px';});
+}
+function buildPresets(){
+  const ps=[150,180,200,240];
+  $('#presets').innerHTML = ps.map(p=>
+    `<button data-cup="${p}" class="${p===state.cupSize?'on':''}">${p} ml</button>`).join('');
+}
+
+/* ===================== UPDATE (dynamic) ===================== */
+function renderFlavorDetails(water){
+  const sel=FLAVORS.filter(f=>state.flavors.has(f.id));
+  const box=$('#flavorDetails');
+  if(!sel.length){box.innerHTML=`<div class="fd-empty">ยังไม่ได้เลือก — กดเลือกด้านบนเพื่อเพิ่มกลิ่นและรสได้เลย</div>`;return;}
+  box.innerHTML = sel.map(f=>
+    `<div class="fd-item">
+       <div class="t"><span>${f.ic}</span>${f.name}<span class="amt">${f.amount(state.cups,water)}</span></div>
+       <div class="e">${f.effect}</div>
+       <div class="src">ที่มา · ${f.src}</div>
+     </div>`).join('');
+}
+function renderTimeline(){
+  const cook=cookMin(), rest=10, soak=state.soak?20:0;
+  const start=parseT(state.startTime);
+  let t=start; const steps=[];
+  if(soak){steps.push({a:'แช่ข้าว',d:soak,from:t}); t+=soak;}
+  steps.push({a:'หุง (กด Cook)',d:cook,from:t}); t+=cook;
+  steps.push({a:'ระอุในหม้อ',d:rest,from:t}); t+=rest;
+  const finish=t, total=soak+cook+rest;
+  const html = steps.map(s=>
+    `<div class="tl-step">
+       <div class="a">${s.a} <span>${s.d} นาที</span></div>
+       <div class="b">${fmtT(s.from)} → ${fmtT(s.from+s.d)}</div>
+     </div>`).join('')
+    + `<div class="tl-done">
+         <div class="a">✅ พร้อมเสิร์ฟ<span class="clk">${fmtT(finish)}</span></div>
+         <div class="tot">รวม ${total} นาที · ±5 นาที (ขึ้นกับหม้อ/ปริมาณข้าว)</div>
+       </div>`;
+  $('#timeline').innerHTML = html;
+}
+function renderSummary(c){
+  const sel=FLAVORS.filter(f=>state.flavors.has(f.id));
+  const add = sel.length ? sel.map(f=>`${f.name} (${f.amount(state.cups,c.water)})`).join(', ') : '—';
+  const cook=cookMin(), rest=10, soak=state.soak?20:0, total=soak+cook+rest;
+  const start=parseT(state.startTime), finish=start+total;
+  const soakLine = state.soak ? 'แช่ 20 นาที → ' : '';
+  const txt =
+`🍚 สูตรหุงข้าว · Rice Master
+━━━━━━━━━━━━━━
+ข้าว : ${state.cups} ถ้วยตวง (${RICE[state.rice].name} · ${SOFT.find(s=>s.id===state.soft).label})
+น้ำ  : ${c.water.toLocaleString()} ml  ≈ ${cupFrac(c.waterCups)} ถ้วยตวง  [อัตรา 1:${c.mult}]
+เพิ่ม : ${add}
+ขั้นตอน : ล้างข้าว 2–3 รอบ → ${soakLine}กด Cook → ระอุ 10 นาที
+เวลา : เริ่ม ${fmtT(start)} → พร้อมเสิร์ฟ ~${fmtT(finish)} (${total} นาที)`;
+  // styled preview (highlight numbers/labels lightly)
+  $('#sumBox').textContent = txt;
+  return txt;
+}
+function update(){
+  const c=calc();
+  animateNum($('#water'), lastWater, c.water); lastWater=c.water;
+  $('#ratio').textContent = `อัตรา 1 : ${c.mult}`;
+  $('#waterSub').innerHTML = `≈ <b>${cupFrac(c.waterCups)} ถ้วยตวง</b> · ข้าว ${c.riceMl.toLocaleString()} ml`;
+  renderFlavorDetails(c.water);
+  renderTimeline();
+  renderSummary(c);
+  $('#footCup').textContent = state.cupSize;
+}
+
+/* ===================== EVENTS ===================== */
+function toast(msg){const t=$('#toast'); $('#toastMsg').textContent=msg; t.classList.add('on'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('on'),1900);}
+
+$('#inc').onclick=()=>{ if(state.cups<12){state.cups++; $('#cupsV').textContent=state.cups; update();} };
+$('#dec').onclick=()=>{ if(state.cups>1){state.cups--; $('#cupsV').textContent=state.cups; update();} };
+
+$('#riceChips').onclick=e=>{const el=e.target.closest('[data-rice]'); if(!el)return;
+  state.rice=el.dataset.rice; buildRiceChips(); update();};
+
+$('#softSeg').onclick=e=>{const el=e.target.closest('[data-soft]'); if(!el)return;
+  state.soft=el.dataset.soft; buildSoft(); update();};
+
+$('#flavorChips').onclick=e=>{const el=e.target.closest('[data-fl]'); if(!el)return;
+  const id=el.dataset.fl; state.flavors.has(id)?state.flavors.delete(id):state.flavors.add(id);
+  el.classList.toggle('on'); update();};
+
+$('#soakSw').onclick=function(){ state.soak=!state.soak; this.classList.toggle('on',state.soak); update();};
+
+$('#startTime').addEventListener('input',e=>{ state.startTime=e.target.value||'06:30'; stopCountdown(); update();});
+
+$('#nowBtn').onclick=()=>{
+  const now=new Date(); state.startTime=fmtT(now.getHours()*60+now.getMinutes());
+  $('#startTime').value=state.startTime;
+  const total=(state.soak?20:0)+cookMin()+10;
+  cdTarget=Date.now()+total*60000;
+  startCountdown(); update(); toast('เริ่มจับเวลาแล้ว 🍚');
+};
+function startCountdown(){
+  $('#countdown').classList.add('on'); tickCD(); clearInterval(cdTimer); cdTimer=setInterval(tickCD,1000);
+}
+function stopCountdown(){clearInterval(cdTimer); cdTarget=null; $('#countdown').classList.remove('on');}
+function tickCD(){
+  if(!cdTarget)return;
+  let rem=Math.round((cdTarget-Date.now())/1000);
+  if(rem<=0){$('#cdC').textContent='พร้อม!'; $('#countdown .l').textContent='ข้าวสุกแล้ว เปิดฝาได้เลย'; clearInterval(cdTimer); return;}
+  const m=Math.floor(rem/60),s=rem%60;
+  $('#cdC').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+$('#acc').onclick=e=>{const q=e.target.closest('[data-acc]'); if(!q)return;
+  const item=q.parentElement, a=item.querySelector('.acc-a'), open=item.classList.contains('open');
+  if(open){a.style.maxHeight='0'; item.classList.remove('open');}
+  else{item.classList.add('open'); a.style.maxHeight=a.scrollHeight+'px';}
+};
+
+$('#copyBtn').onclick=async()=>{
+  const txt=renderSummary(calc());
+  try{await navigator.clipboard.writeText(txt); toast('คัดลอกสูตรแล้ว ✓');}
+  catch(_){ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select();
+    try{document.execCommand('copy'); toast('คัดลอกสูตรแล้ว ✓');}catch(e){toast('คัดลอกไม่สำเร็จ');} ta.remove();}
+};
+
+/* settings modal */
+$('#gear').onclick=()=>$('#ov').classList.add('on');
+$('#ov').onclick=e=>{ if(e.target.id==='ov')$('#ov').classList.remove('on'); };
+$('#sheetDone').onclick=()=>$('#ov').classList.remove('on');
+$('#cupInput').addEventListener('input',e=>{
+  let v=parseInt(e.target.value)||180; state.cupSize=v; buildPresets(); update();});
+$('#presets').onclick=e=>{const el=e.target.closest('[data-cup]'); if(!el)return;
+  state.cupSize=parseInt(el.dataset.cup); $('#cupInput').value=state.cupSize; buildPresets(); update();};
+
+/* ===================== INIT ===================== */
+(function init(){
+  const now=new Date(); state.startTime=fmtT(now.getHours()*60+now.getMinutes());
+  $('#startTime').value=state.startTime; $('#cupInput').value=state.cupSize;
+  buildRiceChips(); buildSoft(); buildFlavorChips(); buildTips(); buildPresets();
+  update();
+})();
+</script>
+</body>
+</html>
